@@ -1,0 +1,8 @@
+# Python__pycache__/
+*.py[cod]
+
+# Marimo
+__marimo__/
+.marimo
+
+
