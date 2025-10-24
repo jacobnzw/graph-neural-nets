@@ -23,6 +23,61 @@ def _(Planetoid):
 
 
 @app.cell
+def _(mo):
+    mo.md(
+        r"""
+    ## Graph Dataset Structure
+
+    CORA contains 1 graph with 2708 nodes and 10556 edges.
+
+    ```python
+    # First and only graph of the CORA dataset; dataset[1] => index out of bounds
+    data = dataset[0]
+    data.x  # node features (1433,)
+    data.y  # node labels (7,)
+    # Binary masks selecting nodes for train/test/validation
+    data.train_mask  
+    data.test_mask
+    data.val_mask
+    # Edges encoded by a pair of node indices it the edge connects 
+    data.edge_index  # (2, num_edges)
+    ```
+
+    ### Node
+    - Has a **feature vector** describing the paper’s content (bag-of-words of the abstract)
+    - Has a **class label** (topic area)
+
+    ### Node features
+    - 1,433-dimensional **binary** feature vector
+    - Comes from a bag-of-words (BoW) representation:
+      - They took the entire corpus of paper abstracts in the dataset. Built a dictionary of 1,433 unique words (after preprocessing). Each node’s feature vector has a **1 at position i if that word appears in the paper’s abstract, else 0.**
+
+    ### Edge
+    - Is a **citation link between two papers**
+    - The assumption is that **papers that cite each other are topically related** — so the citation structure encodes semantic relationships.
+
+    ### Edge features
+    There are **none!**
+
+    ### Labels
+    Each label is an integer encoding a paper topic according to the map
+    ```python
+    topic_map = {
+        0: "Case Based",
+        1: "Genetic Algorithms",
+        2: "Neural Networks",
+        3: "Probabilistic Methods",
+        4: "Reinforcement Learning",
+        5: "Rule Learning",
+        6: "Theory",
+    }
+    ```
+    """
+    )
+    return
+
+
+@app.cell
 def _(data, dataset):
     from tabulate import tabulate
 
@@ -52,44 +107,14 @@ def _(data, dataset):
 def _(mo):
     mo.md(
         r"""
-    ## Graph data structure
+    ## Node Classification
 
-    CORA contains 1 graph with 2708 nodes and 10556 edges.
+    ### Multi-Class Prediction
 
-    ```python
-    data.x  # node features (1433,)
-    data.y  # node labels (7,)
-    # Binary masks selecting nodes for train/test/validation
-    data.train_mask  
-    data.test_mask
-    data.val_mask
-    ```
+    Predict the topic (label) of each paper from its text features (node features) and citation links (encoded by edge_index).
     """
     )
     return
-
-
-@app.cell
-def _(mo):
-    mo.md(r"""## Node Feature t-SNE Visualization""")
-    return
-
-
-@app.cell
-def _(data, model, torch):
-    import matplotlib.pyplot as plt
-    from sklearn.manifold import TSNE
-
-    model.eval()
-    with torch.no_grad():
-        # Get embeddings from last hidden layer (before classifier)
-        embeddings = model(data.x, data.edge_index).cpu().numpy()
-        labels = data.y.cpu().numpy()
-
-    # Reduce to 2D
-    tsne = TSNE(n_components=2, random_state=42)
-    emb_2d = tsne.fit_transform(embeddings)
-    return emb_2d, labels
 
 
 @app.cell
@@ -126,7 +151,7 @@ def _(torch):
 def _(F, GCNClassifier, data, dataset, torch):
     hidden_dim = 16
     model = GCNClassifier(dataset.num_node_features, hidden_dim, dataset.num_classes)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=10e-4)
 
     device = torch.accelerator.current_accelerator()
     n_epochs = 1000
@@ -149,7 +174,7 @@ def _(F, GCNClassifier, data, dataset, torch):
         if epoch % (print_every - 1) == 0:
             test_out, test_y = out[data.test_mask], data.y[data.test_mask]
             test_loss = F.cross_entropy(test_out, test_y)
-            test_preds = test_out.argmax(dim=1)
+            test_preds = F.softmax(test_out, dim=1).argmax(dim=1)
             accuracy = (test_preds == test_y).float().mean()
             print(f"{epoch=} | test_loss={test_loss.item():.4f} | acc={accuracy.item():.4f}")
 
@@ -163,6 +188,7 @@ def _(F, GCNClassifier, data, dataset, torch):
 def _(F, data, model, torch):
     import matplotlib.pyplot as plt
     from sklearn.manifold import TSNE
+    import numpy as np
 
     # TODO: just reduce the feature dim to 2D and see the clusters if any
     model.eval()
@@ -176,23 +202,34 @@ def _(F, data, model, torch):
     # Reduce to 2D
     tsne = TSNE(n_components=2, random_state=42)
     emb_2d = tsne.fit_transform(embeddings.cpu().numpy())
-    return emb_2d, labels, preds
+
+    # Map label indexes to their class descriptions
+    topic_map = np.array([
+        "Case Based",
+        "Genetic Algorithms",
+        "Neural Networks",
+        "Probabilistic Methods",
+        "Reinforcement Learning",
+        "Rule Learning",
+        "Theory"
+    ])
+    labels_topics = topic_map[labels]
+    preds_topics = topic_map[preds]
+    return emb_2d, labels, labels_topics, preds, preds_topics
 
 
 @app.cell
-def _(emb_2d, labels, preds):
+def _(emb_2d, labels, labels_topics, preds, preds_topics):
     import altair as alt
     import pandas as pd
 
     df = pd.DataFrame({
         "x": emb_2d[:, 0],
         "y": emb_2d[:, 1],
-        "label": labels.astype(str),
-        "pred": preds.astype(str)
+        "True": labels_topics,
+        "Predicted": preds_topics,
+        "correct": labels == preds,
     })
-
-    # Flag incorrect predictions
-    df["correct"] = df["label"] == df["pred"]
 
     # Define base chart (all nodes)
     base = (
@@ -201,8 +238,8 @@ def _(emb_2d, labels, preds):
         .encode(
             x="x:Q",
             y="y:Q",
-            color=alt.Color("label:N", legend=alt.Legend(title="True Label")),
-            tooltip=["label", "pred"]
+            color=alt.Color("True:N", legend=alt.Legend(title="Paper Topics")),
+            tooltip=["True", "Predicted"]
         )
     )
 
@@ -216,8 +253,8 @@ def _(emb_2d, labels, preds):
     chart = (
         (base + wrong)
         .properties(
-            title="t-SNE Visualization of Node Embeddings (Altair)",
-            width=700, height=600
+            title="Learned Node Embeddings in 2D (t-SNE)",
+            width=700, height=500
         )
         .interactive()
     )
