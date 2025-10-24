@@ -6,6 +6,27 @@ Graph goes in, graph comes out, each node feature has a new embedding, which can
 
 > GNNs adopt a “graph-in, graph-out” architecture meaning that these model types accept a graph as input, with information loaded into its nodes, edges and global-context, and progressively transform these embeddings, without changing the connectivity of the input graph.
 
+## Hierarchy of GNNs
+
+- **GNN (Graph Neural Network)**
+  - **Message Passing Neural Networks (MPNN)** ← unifying framework
+    - GCN (Graph Convolutional Network)
+      - Each node aggregates features from its neighbors.
+    - GraphSAGE
+      - Learns how to sample and aggregate neighbor info.
+    - GAT (Graph Attention Network)
+      - Uses attention (like in Transformers) to weigh neighbors differently.
+    - GIN (Graph Isomorphism Network)
+      - Designed to be as powerful as classical graph isomorphism tests.
+  - **Beyond MPNN**
+    - Graph Transformer
+      - Adapts Transformer architecture to graphs using attention over nodes.
+    - Spectral GNNs (some variants)
+    - Higher-order GNNs
+    - Dynamic / Spatio-temporal GNNs
+      - Extends GNNs to dynamic/time-dependent graphs (traffic, sensors).
+    - Continuous-time GNNs (Neural ODEs)
+
 
 ## Prediction Tasks on Graphs
 
@@ -93,6 +114,7 @@ where $\mathbf{h}_v^{(l)}$ is the embedding of the current node $v$ at layer $l$
 ## Batching in GNNs
 > A common practice for training neural networks is to update network parameters with gradients calculated on randomized constant size (batch size) subsets of the training data (mini-batches). This practice presents a challenge for graphs due to the variability in the number of nodes and edges adjacent to each other, meaning that **we cannot have a constant batch size**. 
 
+[Advanced Mini-Batching in PyG](https://pytorch-geometric.readthedocs.io/en/latest/advanced/batching.html)
 
 
 ## Resources
