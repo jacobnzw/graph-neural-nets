@@ -102,13 +102,15 @@ Message passing works in three steps (assuming nodes), for each node:
 A sum is the most common aggregation function, but other functions can be used, such as mean, max, etc. The update function can be any differentiable function, but it is usually an MLP.
 
 Formally, neural message passing can be defined as:
+
 $$
 \begin{align*}
 \mathbf{m}_{\mathcal{N}(v)}^{(l)} &= \mathrm{Aggregate}^{(l)}(\{\mathbf{h}^{(l)}_{u}: u \in \mathcal{N}(v)\}) \\
 \mathbf{h}_v^{(l+1)} &= \mathrm{Update}^{(l)} \left( \mathbf{h}_v^{(l)}, \mathbf{m}_{\mathcal{N}(v)}^{(l)} \right)
 \end{align*}
 $$
-where $\mathbf{h}_v^{(l)}$ is the embedding of the current node $v$ at layer $l$, $\{\mathbf{h}_{u}\}_{u \in \mathcal{N}(v)}$ is the set of embeddings from all neighbors of $v$ from which we calculate the message $\mathbf{m}_{\mathcal{N}(v)}^{(l)}$, and $\mathrm{Update}^{(l)}$ is the update function. Both $\mathrm{Aggregate}^{(l)}$ and $\mathrm{Update}^{(l)}$ are differentiable functions and thus could be modelled by neural networks, such as MLPs or whatever else.
+
+where $`\mathbf{h}_v^{(l)}`$ is the embedding of the current node $v$ at layer $l$, $`\{\mathbf{h}_{u}\}_{u \in \mathcal{N}(v)}`$ is the set of embeddings from all neighbors of $v$ from which we calculate the message $\mathbf{m}_{\mathcal{N}(v)}^{(l)}$, and $\mathrm{Update}^{(l)}$ is the update function. Both $\mathrm{Aggregate}^{(l)}$ and $\mathrm{Update}^{(l)}$ are differentiable functions and thus could be modelled by neural networks, such as MLPs or whatever else.
 
 
 ## Batching in GNNs
